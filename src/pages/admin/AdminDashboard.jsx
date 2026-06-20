@@ -1,10 +1,11 @@
 
 import React, { useEffect, useState } from 'react';
-import { Users, CalendarDays, Megaphone, HandCoins } from 'lucide-react';
+import { Users, CalendarDays, Megaphone, HandCoins, Download } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import StatCard from '../../components/dashboard/StatCard';
 import Skeleton from '../../components/ui/Skeleton';
-import { getAdminStats } from '../../api/dashboard';
+import Button from '../../components/ui/Button';
+import { getAdminStats, exportVolunteersApi, exportDonationsApi } from '../../api/dashboard';
 
 const growth = [
   { month: 'Jan', volunteers: 120 }, { month: 'Feb', volunteers: 180 }, { month: 'Mar', volunteers: 260 },
@@ -19,6 +20,8 @@ const donationTrend = [
 const AdminDashboard = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exportingVolunteers, setExportingVolunteers] = useState(false);
+  const [exportingDonations, setExportingDonations] = useState(false);
 
   useEffect(() => {
     getAdminStats()
@@ -27,10 +30,58 @@ const AdminDashboard = () => {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleDownload = (blob, filename) => {
+    const url = window.URL.createObjectURL(new Blob([blob]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+  };
+
+  const handleExportVolunteers = async () => {
+    setExportingVolunteers(true);
+    try {
+      const blob = await exportVolunteersApi();
+      handleDownload(blob, `volunteers-report-${new Date().toISOString().split('T')[0]}.csv`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExportingVolunteers(false);
+    }
+  };
+
+  const handleExportDonations = async () => {
+    setExportingDonations(true);
+    try {
+      const blob = await exportDonationsApi();
+      handleDownload(blob, `donations-report-${new Date().toISOString().split('T')[0]}.csv`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setExportingDonations(false);
+    }
+  };
+
   return (
     <div>
-      <h1 className="font-display text-2xl font-semibold text-ink dark:text-canvas">Admin overview</h1>
-      <p className="mt-1 text-sm text-ink/60 dark:text-canvas/60">Organization-wide volunteer and donation analytics.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-semibold text-ink dark:text-canvas">Admin overview</h1>
+          <p className="mt-1 text-sm text-ink/60 dark:text-canvas/60">Organization-wide volunteer and donation analytics.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" onClick={handleExportVolunteers} disabled={exportingVolunteers} className="flex items-center gap-2">
+            <Download size={16} />
+            {exportingVolunteers ? 'Exporting...' : 'Export Volunteers'}
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportDonations} disabled={exportingDonations} className="flex items-center gap-2">
+            <Download size={16} />
+            {exportingDonations ? 'Exporting...' : 'Export Donations'}
+          </Button>
+        </div>
+      </div>
 
       <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {loading ? (
